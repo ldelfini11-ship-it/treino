@@ -271,6 +271,11 @@
     background:linear-gradient(90deg,var(--teal),var(--orange));color:#0A0E17;
     box-shadow:0 6px 20px rgba(255,122,69,.25);
   }
+  .finish-skip-btn{
+    width:100%;margin-top:8px;padding:11px;border:1px solid var(--line);border-radius:12px;
+    background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;
+  }
+  .finish-skip-btn:hover{color:var(--text);border-color:var(--muted);}
 
   .celeb{
     position:fixed;inset:0;z-index:60;background:rgba(6,9,15,.88);
@@ -442,6 +447,7 @@
   <div class="ov-cta">
     <div class="ov-cta-inner">
       <button class="finish-btn" id="finishBtn">Marque todos os exercícios</button>
+      <button class="finish-skip-btn" id="finishSkipBtn">✅ Já treinei — finalizar o dia inteiro</button>
     </div>
   </div>
 </div>
@@ -652,7 +658,7 @@ function renderTodayCard(){
   const done = progress.completed.length;
   const behindBy = expected - done;
 
-  let cls, tag, title, desc, btnLabel, btnAction;
+  let cls, tag, title, desc, btnLabel, btnAction, quickNum = null;
 
   if(behindBy > 0){
     cls = 'behind'; tag = `Dia ${dayNumHuman} de 90`;
@@ -660,6 +666,7 @@ function renderTodayCard(){
     desc = 'Sem problema, seguir sem culpa é o que importa. Bora recuperar de onde parou?';
     btnLabel = 'Fazer próximo treino →';
     btnAction = ()=> openWorkout(unlockedTrainingNum());
+    quickNum = unlockedTrainingNum();
   } else if(slot.isRest){
     cls = 'rest'; tag = `Dia ${dayNumHuman} de 90`;
     title = '😌 Hoje é dia de folga';
@@ -678,6 +685,7 @@ function renderTodayCard(){
     desc = `Treino ${nextNum} de ${TOTAL_TRAININGS} · leva uns 25–30 minutos. Vamos nessa?`;
     btnLabel = 'Começar treino de hoje →';
     btnAction = ()=> openWorkout(nextNum);
+    quickNum = nextNum;
   }
 
   box.innerHTML = `
@@ -686,10 +694,26 @@ function renderTodayCard(){
       <div class="today-title">${title}</div>
       <div class="today-desc">${desc}</div>
       ${btnLabel ? `<button class="today-btn" id="todayActionBtn">${btnLabel}</button>` : ''}
+      ${quickNum ? `<button class="today-btn secondary" id="todayQuickBtn">✅ Já treinei — finalizar o dia inteiro</button>` : ''}
     </div>`;
   if(btnLabel){
     document.getElementById('todayActionBtn').addEventListener('click', btnAction);
   }
+  if(quickNum){
+    document.getElementById('todayQuickBtn').addEventListener('click', ()=> completeWholeDay(quickNum));
+  }
+}
+
+function completeWholeDay(trainingNum){
+  if(progress.completed.includes(trainingNum)) return;
+  if(!confirm('Marcar o treino de hoje inteiro como concluído, sem passar pelos exercícios um a um?')) return;
+  clearAllTimers();
+  document.getElementById('overlay').classList.remove('open');
+  progress.completed.push(trainingNum);
+  saveProgress();
+  const d = TRAINING_DAYS[trainingNum-1];
+  celebrate(d);
+  render();
 }
 
 /* ---------- RENDER PATH ---------- */
@@ -1246,6 +1270,10 @@ document.getElementById('finishBtn').addEventListener('click', ()=>{
   document.getElementById('overlay').classList.remove('open');
   celebrate(d);
   render();
+});
+
+document.getElementById('finishSkipBtn').addEventListener('click', ()=>{
+  if(currentTrainingNum) completeWholeDay(currentTrainingNum);
 });
 
 /* ---------- CELEBRATION ---------- */
